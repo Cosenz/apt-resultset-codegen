@@ -1,0 +1,16 @@
+*.iml
+*.class
+*.jar
+.idea/
+*/target/
+*/target/**
+**/target/**
+*/tld/**
+*.jar
+*.war
+
+##for eclipse
+
+.classpath
+.project
+.settings
