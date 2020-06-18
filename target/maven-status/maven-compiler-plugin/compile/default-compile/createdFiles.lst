@@ -1,0 +1,5 @@
+it\cosenzproject\tools\processor\definition\RSConvertDefinition.class
+it\cosenzproject\tools\processor\RSConverterProcessor.class
+it\cosenzproject\tools\generator\RSConvertGenerator.class
+it\cosenzproject\tools\annotation\RSConvert.class
+it\cosenzproject\tools\annotation\RSColumn.class
