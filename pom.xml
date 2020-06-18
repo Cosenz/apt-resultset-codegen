@@ -14,13 +14,13 @@
     <javapoet.version>1.1.0</javapoet.version>
   </properties>
 
-  <dependencies>
-  	<dependency>
-		<groupId>com.squareup</groupId>
-		<artifactId>javapoet</artifactId>
-		<version>${javapoet.version}</version>
-	</dependency>
-  </dependencies>
+    <dependencies>
+        <dependency>
+            <groupId>com.squareup</groupId>
+            <artifactId>javapoet</artifactId>
+            <version>${javapoet.version}</version>
+        </dependency>
+    </dependencies>
   
   <build>
         <plugins>

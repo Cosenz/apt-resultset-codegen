@@ -28,30 +28,37 @@ import it.cosenzproject.tools.processor.definition.RSConvertDefinition;
 
 public class RSConvertGenerator {
 
-	public static final String CONVERT_SUFFIX = "RSConverter";
+	protected static final String CONVERT_SUFFIX = "RSConverter";
+	protected static final String RESULT_SET_FORMAT = "result.set%s(value.get%s(\"$L\"))";
+	protected static final String RESULT_SET_STRING_FORMAT = "result.set%s(value.get%s(\"$L\") != null ? value.get%s(\"$L\").trim() : null)";
+	protected static final String STRING = "String";
 
 	public static void build(RSConvertDefinition definition, Elements elementUtils, Filer filer) throws IOException {
 		TypeElement interfaceTypeElement = definition.getTypeElement();
 		String adapterClassName = interfaceTypeElement.getSimpleName() + CONVERT_SUFFIX;
 
 		PackageElement pkg = elementUtils.getPackageOf(interfaceTypeElement);
-		String packageName = pkg.isUnnamed() ? null : pkg.getQualifiedName().toString();
+		String packageName = pkg.isUnnamed() ? "default" : pkg.getQualifiedName().toString();
 
 		// aggiungo l'annotation Generated con data e commenti per versione e autore
 		// l'attributo value è obbligatorio
 		AnnotationSpec annotationSpec = AnnotationSpec.builder(Generated.class)
-		        .addMember("value", "$S", RSConverterProcessor.class.getName()).addMember("date", "$S", new Date().toString())
-		        .addMember("comments", "$S", "version: 1.0.0, author: Andrea Cosentino").build();
-		TypeSpec.Builder builder = TypeSpec.classBuilder(adapterClassName).addModifiers(Modifier.PUBLIC).addAnnotation(annotationSpec);
+		        .addMember("value", "$S", RSConverterProcessor.class.getName())
+				.addMember("date", "$S", new Date().toString())
+		        .addMember("comments", "$S", "version: 1.0.0, author: Andrea Cosentino")
+				.build();
+		TypeSpec.Builder builder = TypeSpec.classBuilder(adapterClassName)
+				.addModifiers(Modifier.PUBLIC)
+				.addAnnotation(annotationSpec);
 		// Potevamo generare la javadoc così al posto dell'annotazione Generated
 		// builder.addJavadoc("Generato automaticamente.\n\n @since $L\n @author Andrea
 		// Cosentino\n\n", (new Date()).toString());
-		builder.addMethod(buildCreateMethod(definition, elementUtils, "convert"));
+		builder.addMethod(buildCreateMethod(definition, "convert"));
 		TypeSpec typeSpec = builder.build();
 		JavaFile.builder(packageName, typeSpec).build().writeTo(filer);
 	}
 
-	private static MethodSpec buildCreateMethod(RSConvertDefinition definition, Elements elementUtils, String methodName) {
+	private static MethodSpec buildCreateMethod(RSConvertDefinition definition, String methodName) {
 		TypeElement typeElement = definition.getTypeElement();
 
 		ClassName methodParam = ClassName.get(ResultSet.class);
@@ -63,11 +70,16 @@ public class RSConvertGenerator {
 		for (Element item : definition.getTypeElement().getEnclosedElements()) {
 			if (item.getKind() == ElementKind.FIELD) {
 				RSColumn column = item.getAnnotation(RSColumn.class);
-				String statement = String.format("result.set%s(value.get%s(\"$L\"))", item.getSimpleName().toString().substring(0, 1)
-				        .toUpperCase(Locale.ITALY).concat(item.getSimpleName().toString().substring(1)), convertType(item));
+				String type = convertType(item);
+				String statement = createStatement(item, type);
 				if (column != null) {
-					method.addStatement(statement, column.value());
-				} else {
+					if(STRING.equals(type))
+						method.addStatement(statement, column.value(), column.value());
+					else
+						method.addStatement(statement, column.value());
+				} else if(STRING.equals(type)) {
+					method.addStatement(statement, item.getSimpleName(), item.getSimpleName());
+				}else {
 					method.addStatement(statement, item.getSimpleName());
 				}
 			}
@@ -76,6 +88,22 @@ public class RSConvertGenerator {
 		method.addStatement("return result");
 
 		return method.build();
+	}
+
+	/**
+	 * Check type of element and if type equals String concat trim method
+	 *
+	 * @param item
+	 * @param type
+	 * @return
+	 */
+	private static String createStatement(Element item, String type) {
+		if(STRING.equals(type)) {
+			return String.format(RESULT_SET_STRING_FORMAT, item.getSimpleName().toString().substring(0, 1)
+					.toUpperCase(Locale.ITALY).concat(item.getSimpleName().toString().substring(1)), type, type);
+		}
+		return String.format(RESULT_SET_FORMAT, item.getSimpleName().toString().substring(0, 1)
+				.toUpperCase(Locale.ITALY).concat(item.getSimpleName().toString().substring(1)), type);
 	}
 
 	private static String convertType(Element item) {

@@ -20,7 +20,7 @@ import it.cosenzproject.tools.annotation.RSConvert;
 import it.cosenzproject.tools.generator.RSConvertGenerator;
 import it.cosenzproject.tools.processor.definition.RSConvertDefinition;
 
-@SupportedAnnotationTypes({ "it.cosenzproject.tools.annotation.RSConvert", "it.cosenzproject.tools.annotation.RSColumn" })
+@SupportedAnnotationTypes({ "it.cosenzproject.tools.annotation.RSConvert" })
 public class RSConverterProcessor extends AbstractProcessor {
 
 	private Elements elements;
