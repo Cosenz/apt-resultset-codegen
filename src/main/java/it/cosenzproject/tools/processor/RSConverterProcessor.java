@@ -20,6 +20,10 @@ import it.cosenzproject.tools.annotation.RSConvert;
 import it.cosenzproject.tools.generator.RSConvertGenerator;
 import it.cosenzproject.tools.processor.definition.RSConvertDefinition;
 
+/**
+ *
+ * @author Andrea Cosentino
+ */
 @SupportedAnnotationTypes({ "it.cosenzproject.tools.annotation.RSConvert" })
 public class RSConverterProcessor extends AbstractProcessor {
 

@@ -10,5 +10,7 @@ import java.lang.annotation.Target;
 @Target(FIELD)
 public @interface RSColumn {
 
-	String value();
+	String value() default "";
+
+	String converter() default "";
 }

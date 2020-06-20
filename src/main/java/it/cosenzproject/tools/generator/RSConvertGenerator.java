@@ -1,10 +1,12 @@
 package it.cosenzproject.tools.generator;
 
+import static it.cosenzproject.tools.util.Constants.CONVERT_SUFFIX;
+import static it.cosenzproject.tools.util.Constants.STRING;
+
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
-import java.util.Locale;
 
 import javax.annotation.Generated;
 import javax.annotation.processing.Filer;
@@ -25,13 +27,13 @@ import com.squareup.javapoet.TypeSpec;
 import it.cosenzproject.tools.annotation.RSColumn;
 import it.cosenzproject.tools.processor.RSConverterProcessor;
 import it.cosenzproject.tools.processor.definition.RSConvertDefinition;
+import it.cosenzproject.tools.util.Constants;
 
+/**
+ * @author Andrea Cosentino
+ *
+ */
 public class RSConvertGenerator {
-
-	protected static final String CONVERT_SUFFIX = "RSConverter";
-	protected static final String RESULT_SET_FORMAT = "result.set%s(value.get%s(\"$L\"))";
-	protected static final String RESULT_SET_STRING_FORMAT = "result.set%s(value.get%s(\"$L\") != null ? value.get%s(\"$L\").trim() : null)";
-	protected static final String STRING = "String";
 
 	public static void build(RSConvertDefinition definition, Elements elementUtils, Filer filer) throws IOException {
 		TypeElement interfaceTypeElement = definition.getTypeElement();
@@ -45,7 +47,7 @@ public class RSConvertGenerator {
 		AnnotationSpec annotationSpec = AnnotationSpec.builder(Generated.class)
 		        .addMember("value", "$S", RSConverterProcessor.class.getName())
 				.addMember("date", "$S", new Date().toString())
-		        .addMember("comments", "$S", "version: 1.0.0, author: Andrea Cosentino")
+		        .addMember("comments", "$S", "codegen version: 1.0.0")
 				.build();
 		TypeSpec.Builder builder = TypeSpec.classBuilder(adapterClassName)
 				.addModifiers(Modifier.PUBLIC)
@@ -63,47 +65,52 @@ public class RSConvertGenerator {
 
 		ClassName methodParam = ClassName.get(ResultSet.class);
 
-		MethodSpec.Builder method = MethodSpec.methodBuilder(methodName).addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-		        .addException(SQLException.class).addParameter(methodParam, "value").returns(TypeName.get(typeElement.asType()));
+		MethodSpec.Builder method = MethodSpec.methodBuilder(methodName)
+				.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+		        .addException(SQLException.class)
+				.addParameter(methodParam, Constants.PARAM_NAME)
+				.returns(TypeName.get(typeElement.asType()));
 
 		method.addStatement("$L result=new $L()", typeElement.getSimpleName(), typeElement.getSimpleName());
 		for (Element item : definition.getTypeElement().getEnclosedElements()) {
 			if (item.getKind() == ElementKind.FIELD) {
 				RSColumn column = item.getAnnotation(RSColumn.class);
 				String type = convertType(item);
-				String statement = createStatement(item, type);
-				if (column != null) {
-					if(STRING.equals(type))
-						method.addStatement(statement, column.value(), column.value());
-					else
-						method.addStatement(statement, column.value());
-				} else if(STRING.equals(type)) {
-					method.addStatement(statement, item.getSimpleName(), item.getSimpleName());
-				}else {
-					method.addStatement(statement, item.getSimpleName());
-				}
+				StatementBuilder statementBuilder = new StatementBuilder()
+						.setPropertyName(item.getSimpleName().toString())
+						.setResultSetType(type)
+						.setConverter(column.converter());
+				String statement = statementBuilder.build();
+				chooseStament(method, item, column, type, statement);
 			}
 		}
-
 		method.addStatement("return result");
 
 		return method.build();
 	}
 
 	/**
-	 * Check type of element and if type equals String concat trim method
-	 *
+	 * Call correct override addStatement method
+	 * @param method
 	 * @param item
+	 * @param column
 	 * @param type
-	 * @return
+	 * @param statement
 	 */
-	private static String createStatement(Element item, String type) {
-		if(STRING.equals(type)) {
-			return String.format(RESULT_SET_STRING_FORMAT, item.getSimpleName().toString().substring(0, 1)
-					.toUpperCase(Locale.ITALY).concat(item.getSimpleName().toString().substring(1)), type, type);
+	private static void chooseStament(MethodSpec.Builder method, Element item, RSColumn column, String type, String statement) {
+		if (column != null && !column.converter().isEmpty())
+			method.addStatement(statement);
+		else if (column != null && !column.value().isEmpty() && STRING.equals(type)) {
+			method.addStatement(statement, column.value(), column.value());
 		}
-		return String.format(RESULT_SET_FORMAT, item.getSimpleName().toString().substring(0, 1)
-				.toUpperCase(Locale.ITALY).concat(item.getSimpleName().toString().substring(1)), type);
+		else if(column != null && !column.value().isEmpty()) {
+			method.addStatement(statement, column.value());
+		}
+		else if(STRING.equals(type)) {
+			method.addStatement(statement, item.getSimpleName(), item.getSimpleName());
+		}else {
+			method.addStatement(statement, item.getSimpleName());
+		}
 	}
 
 	private static String convertType(Element item) {
